@@ -14,7 +14,8 @@ import json
 import logging
 import os
 
-from typing import Callable, Dict, List, Optional, Protocol, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
+from codechecker_common.skiplist_handler import SkipListHandlers
 
 from .. import util
 
@@ -23,11 +24,6 @@ LOG = logging.getLogger('report-converter')
 
 FakeChecker: Tuple[str, str] = ("__FAKE__", "__FAKE__")
 UnknownChecker: Tuple[str, str] = ("UNKNOWN", "NOT FOUND")
-
-
-class SkipListHandlers(Protocol):
-    should_skip: Callable[[str], bool]
-
 
 InvalidFileContentMsg: str = \
     "WARNING: source file content is changed or missing. Please re-analyze " \

@@ -10,7 +10,8 @@ import logging
 
 from typing import Callable, Iterable, List, Optional, Set
 
-from codechecker_report_converter.report import Report, SkipListHandlers
+from codechecker_common.skiplist_handler import SkipListHandlers
+from codechecker_report_converter.report import Report
 from codechecker_report_converter.report.hash import get_report_path_hash
 
 LOG = logging.getLogger('report-converter')
