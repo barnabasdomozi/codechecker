@@ -1,5 +1,6 @@
 from typing import Optional
 from fastapi import FastAPI, Response, status
+from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
@@ -25,12 +26,12 @@ def start_server(config_directory: str, workspace_directory: str,
     app = FastAPI(title="CodeChecker Server")
 
 
-    @app.get("/live")
+    @app.get("/live", response_class=PlainTextResponse)
     async def liveness() -> str:
         return "CODECHECKER_SERVER_IS_LIVE"
 
 
-    @app.get("/ready")
+    @app.get("/ready", response_class=PlainTextResponse)
     async def readiness(response: Response) -> str:
         try:
             with DBSession(get_config_session()) as cfg_sess:
