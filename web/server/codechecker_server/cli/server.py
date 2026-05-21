@@ -44,6 +44,7 @@ from codechecker_server.database.run_db_model \
 
 from codechecker_web.shared import webserver_context, database_status, \
     host_check, env
+from codechecker_server.fastapi import main as fastapi_server
 
 LOG = logger.get_logger('server')
 
@@ -86,6 +87,11 @@ def add_arguments_to_parser(parser):
                         required=False,
                         help="Directory where CodeChecker can store analysis "
                              "result related data, such as the database.")
+    
+    parser.add_argument('--fastapi',
+                        action='store_true',
+                        dest="fastapi",
+                        help="Uses the new FastAPI-based backend.")
 
     parser.add_argument('-f', '--config-directory',
                         type=str,
@@ -1053,6 +1059,21 @@ def server_init_start(args):
                          f"{socket.gethostname()}:{args.view_port}")
 
     try:
+        if 'fastapi' in args:
+            return fastapi_server.start_server(args.config_directory,
+                                               args.workspace,
+                                               package_data,
+                                               args.view_port,
+                                               cfg_sql_server,
+                                               args.listen_address,
+                                               'force_auth' in args,
+                                               args.skip_db_cleanup,
+                                               context,
+                                               environ,
+                                               machine_id,
+                                               args.api_handler_processes,
+                                               args.task_worker_processes)
+        
         return server.start_server(args.config_directory,
                                    args.workspace,
                                    package_data,
