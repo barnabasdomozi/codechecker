@@ -40,7 +40,7 @@ def start_server(config_directory: str, workspace_directory: str,
             response.status_code = 500
             return "CODECHECKER_SERVER_IS_NOT_READY"
             
-    app.mount("/", StaticFiles(directory=package_data['www_root']), name="static")
+    app.mount("/", StaticFiles(directory=package_data['www_root'], html=True), name="static")
         
     uvicorn.run(app, host="localhost", port=8001)
     return 0
