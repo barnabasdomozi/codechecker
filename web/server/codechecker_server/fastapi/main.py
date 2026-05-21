@@ -34,7 +34,18 @@ class CodeCheckerFastAPIServer:
 
         uvicorn.run(self.app, host=listen_address, port=port)
         return 0
-    
+
+    def __getThriftProtocol(self, body: bytes):
+        protocol_factory = TJSONProtocol.TJSONProtocolFactory()
+        input_protocol_factory = protocol_factory
+        output_protocol_factory = protocol_factory
+
+        itrans = TTransport.TMemoryBuffer(body)
+        otrans = TTransport.TMemoryBuffer()
+        iprot = input_protocol_factory.getProtocol(itrans)
+        oprot = output_protocol_factory.getProtocol(otrans)
+        return iprot, oprot, otrans
+
     def _register_GET(self, package_data):
         @self.app.get("/live", response_class=PlainTextResponse)
         async def liveness() -> str:
@@ -49,26 +60,18 @@ class CodeCheckerFastAPIServer:
             except Exception:
                 response.status_code = 500
                 return "CODECHECKER_SERVER_IS_NOT_READY"
-        
+
     def _register_POST(self, package_data):
         router = APIRouter()
 
         @router.post("/ServerInfo", response_class=PlainTextResponse)
         async def handleServerInfo(request: Request, response: Response) -> str:
-            protocol_factory = TJSONProtocol.TJSONProtocolFactory()
-            input_protocol_factory = protocol_factory
-            output_protocol_factory = protocol_factory
-            
-            itrans = TTransport.TMemoryBuffer(await request.body())
-            iprot = input_protocol_factory.getProtocol(itrans)
-
-            otrans = TTransport.TMemoryBuffer()
-            oprot = output_protocol_factory.getProtocol(otrans)
+            iprot, oprot, otrans = self.__getThriftProtocol(await request.body())
 
             server_info_handler = ServerInfoHandler_v6(package_data['version'])
             processor = ServerInfoAPI_v6.Processor(
                 server_info_handler)
-            
+
             processor.process(iprot, oprot)
             return otrans.getvalue()
 
