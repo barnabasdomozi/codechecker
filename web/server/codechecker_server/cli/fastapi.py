@@ -2,10 +2,8 @@
 'CodeChecker fastapi' command to start the FastAPI-based server.
 """
 
-import uvicorn
-
 from codechecker_common import arg
-from codechecker_server.fastapi.main import app
+from codechecker_server.fastapi.main import start_server
 
 
 def get_argparser_ctor_args():
@@ -39,4 +37,18 @@ def add_arguments_to_parser(parser):
 
 
 def main(args):
-    uvicorn.run(app, host=args.listen_address, port=args.port)
+    start_server(
+        config_directory=None,
+        workspace_directory=None,
+        package_data=None,
+        port=args.port,
+        config_sql_server=None,
+        listen_address=args.listen_address,
+        force_auth=False,
+        skip_db_cleanup=False,
+        context=None,
+        check_env=None,
+        machine_id=None,
+        api_handler_processes=None,
+        task_worker_processes=None,
+    )

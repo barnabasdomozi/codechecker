@@ -1,4 +1,6 @@
 from typing import Optional
+
+import uvicorn
 from fastapi import FastAPI, Response, status
 from fastapi.staticfiles import StaticFiles
 
@@ -39,4 +41,6 @@ def start_server(config_directory: str, workspace_directory: str,
                  task_worker_processes: Optional[int]) -> int:
     global app
     app = FastAPI(title="CodeChecker Server")
-    app.mount("/", StaticFiles(directory=package_data['www_root'], name="static"))
+    if package_data:
+        app.mount("/", StaticFiles(directory=package_data['www_root'], name="static"))
+    uvicorn.run(app, host=listen_address, port=port)
