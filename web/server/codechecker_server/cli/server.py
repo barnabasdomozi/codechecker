@@ -1059,9 +1059,9 @@ def server_init_start(args):
                          f"{socket.gethostname()}:{args.view_port}")
 
     try:
-        if 'fastapi' in args:
-            server = fastapi_server.CodeCheckerFastAPIServer()
-            return server.start_server(args.config_directory,
+        if args.fastapi:
+            cc_fastapi_server = fastapi_server.CodeCheckerFastAPIServer()
+            return cc_fastapi_server.start_server(args.config_directory,
                                                args.workspace,
                                                package_data,
                                                args.view_port,
