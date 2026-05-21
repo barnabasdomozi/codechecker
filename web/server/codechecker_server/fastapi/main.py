@@ -22,20 +22,16 @@ class CodeCheckerFastAPIServer:
                      machine_id: str,
                      api_handler_processes: Optional[int],
                      task_worker_processes: Optional[int]) -> int:
-
-        # self.app.get("/live")(self.liveness)
-        # self.app.get("/ready")(self.readiness)
-
         self.app.mount("/", StaticFiles(directory=package_data['www_root'], html=True), name="static")
 
         uvicorn.run(self.app, host="localhost", port=8001)
         return 0
 
-    @app.get("/live")
+    @app.get("/live", response_class=PlainTextResponse)
     async def liveness() -> str:
         return "CODECHECKER_SERVER_IS_LIVE"
 
-    @app.get("/ready")
+    @app.get("/ready", response_class=PlainTextResponse)
     async def readiness(response: Response) -> str:
         try:
             with DBSession(get_config_session()) as cfg_sess:
