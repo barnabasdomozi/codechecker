@@ -1,11 +1,11 @@
-from fastapi import FastAPI
-from fastapi.responses import PlainTextResponse
+from typing import Optional
+from fastapi import FastAPI, Response, status
+from fastapi.staticfiles import StaticFiles
 
 from ..database.config_db_model import Configuration as ORMConfiguration
 from ..database.database import DBSession
 
-app = FastAPI(title="CodeChecker Server")
-
+app: FastAPI
 
 def get_config_session():
     """Override this to provide the config DB session factory."""
@@ -13,21 +13,30 @@ def get_config_session():
         "config_session must be set before using readiness probe.")
 
 
-@app.get("/live", response_class=PlainTextResponse)
-async def liveness():
-    """Handle liveness probe."""
-    return PlainTextResponse(
-        content="CODECHECKER_SERVER_IS_LIVE", status_code=200)
+@app.get("/live")
+async def liveness() -> str:
+    return "CODECHECKER_SERVER_IS_LIVE"
 
 
-@app.get("/ready", response_class=PlainTextResponse)
-async def readiness():
-    """Handle readiness probe."""
+@app.get("/ready")
+async def readiness(response: Response) -> str:
     try:
         with DBSession(get_config_session()) as cfg_sess:
             cfg_sess.query(ORMConfiguration).count()
-            return PlainTextResponse(
-                content="CODECHECKER_SERVER_IS_READY", status_code=200)
+            return "CODECHECKER_SERVER_IS_READY"
     except Exception:
-        return PlainTextResponse(
-            content="CODECHECKER_SERVER_IS_NOT_READY", status_code=500)
+        response.status_code = 500
+        return "CODECHECKER_SERVER_IS_NOT_READY"
+    
+
+
+def start_server(config_directory: str, workspace_directory: str,
+                 package_data, port: int, config_sql_server,
+                 listen_address: str, force_auth: bool,
+                 skip_db_cleanup: bool, context, check_env,
+                 machine_id: str,
+                 api_handler_processes: Optional[int],
+                 task_worker_processes: Optional[int]) -> int:
+    global app
+    app = FastAPI(title="CodeChecker Server")
+    app.mount("/", StaticFiles(directory=package_data['www_root'], name="static"))
