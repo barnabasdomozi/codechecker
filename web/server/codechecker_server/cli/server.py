@@ -87,7 +87,7 @@ def add_arguments_to_parser(parser):
                         required=False,
                         help="Directory where CodeChecker can store analysis "
                              "result related data, such as the database.")
-    
+
     parser.add_argument('--fastapi',
                         action='store_true',
                         dest="fastapi",
@@ -1060,7 +1060,8 @@ def server_init_start(args):
 
     try:
         if 'fastapi' in args:
-            return fastapi_server.start_server(args.config_directory,
+            server = fastapi_server.CodeCheckerFastAPIServer()
+            return server.start_server(args.config_directory,
                                                args.workspace,
                                                package_data,
                                                args.view_port,
@@ -1073,7 +1074,7 @@ def server_init_start(args):
                                                machine_id,
                                                args.api_handler_processes,
                                                args.task_worker_processes)
-        
+
         return server.start_server(args.config_directory,
                                    args.workspace,
                                    package_data,

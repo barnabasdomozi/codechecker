@@ -7,31 +7,35 @@ import uvicorn
 from ..database.config_db_model import Configuration as ORMConfiguration
 from ..database.database import DBSession
 
-app: FastAPI = None
-
 def get_config_session():
     """Override this to provide the config DB session factory."""
     raise NotImplementedError(
         "config_session must be set before using readiness probe.")
 
+class CodeCheckerFastAPIServer:
+    app = FastAPI()
 
-def start_server(config_directory: str, workspace_directory: str,
-                 package_data, port: int, config_sql_server,
-                 listen_address: str, force_auth: bool,
-                 skip_db_cleanup: bool, context, check_env,
-                 machine_id: str,
-                 api_handler_processes: Optional[int],
-                 task_worker_processes: Optional[int]) -> int:
-    global app
-    app = FastAPI(title="CodeChecker Server")
+    def start_server(self, config_directory: str, workspace_directory: str,
+                     package_data, port: int, config_sql_server,
+                     listen_address: str, force_auth: bool,
+                     skip_db_cleanup: bool, context, check_env,
+                     machine_id: str,
+                     api_handler_processes: Optional[int],
+                     task_worker_processes: Optional[int]) -> int:
 
+        # self.app.get("/live")(self.liveness)
+        # self.app.get("/ready")(self.readiness)
 
-    @app.get("/live", response_class=PlainTextResponse)
+        self.app.mount("/", StaticFiles(directory=package_data['www_root'], html=True), name="static")
+
+        uvicorn.run(self.app, host="localhost", port=8001)
+        return 0
+
+    @app.get("/live")
     async def liveness() -> str:
         return "CODECHECKER_SERVER_IS_LIVE"
 
-
-    @app.get("/ready", response_class=PlainTextResponse)
+    @app.get("/ready")
     async def readiness(response: Response) -> str:
         try:
             with DBSession(get_config_session()) as cfg_sess:
@@ -40,8 +44,3 @@ def start_server(config_directory: str, workspace_directory: str,
         except Exception:
             response.status_code = 500
             return "CODECHECKER_SERVER_IS_NOT_READY"
-            
-    app.mount("/", StaticFiles(directory=package_data['www_root'], html=True), name="static")
-        
-    uvicorn.run(app, host="localhost", port=8001)
-    return 0
