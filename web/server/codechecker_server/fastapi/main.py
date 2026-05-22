@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 import sys
+from sqlalchemy.orm import sessionmaker
 from typing import Annotated, Optional
 from fastapi import APIRouter, Cookie, Depends, FastAPI, Header, Request, Response, status
 from fastapi.responses import PlainTextResponse
@@ -10,11 +11,15 @@ from thrift.protocol import TJSONProtocol
 from thrift.transport import TTransport
 from codechecker_api.ServerInfo_v6 import \
     serverInfoService as ServerInfoAPI_v6
+from codechecker_api.Authentication_v6 import \
+    codeCheckerAuthentication as AuthAPI_v6
 
 from codechecker_common.logger import get_logger, signal_log, LOG_CONFIG
 from .. import session_manager
 from ..api.server_info_handler import \
     ThriftServerInfoHandler as ServerInfoHandler_v6
+from ..api.authentication import \
+    ThriftAuthHandler as AuthHandler_v6
 import uvicorn
 
 from ..database.config_db_model import Configuration as ORMConfiguration
@@ -42,7 +47,7 @@ class CodeCheckerFastAPIServer:
         self.version = package_data['version']
         self.context = context
         self.check_env = check_env
-        
+
         # The root user file is DEPRECATED AND IGNORED
         root_file = os.path.join(config_directory, 'root.user')
         if os.path.exists(root_file):
@@ -73,9 +78,9 @@ class CodeCheckerFastAPIServer:
                 LOG.info("CodeChecker server's example configuration file "
                             "created at '%s'", server_cfg_file)
                 shutil.copyfile(example_cfg_file, server_cfg_file)
-    
+
         server_secrets_file = os.path.join(config_directory, 'server_secrets.json')
-    
+
         try:
             self.manager = session_manager.SessionManager(
                 server_cfg_file,
@@ -92,6 +97,10 @@ class CodeCheckerFastAPIServer:
             LOG.error(verr)
             sys.exit(1)
 
+        LOG.debug("Creating database engine for CONFIG DATABASE...")
+        self.__engine = config_sql_server.create_engine()
+        self.config_session = sessionmaker(bind=self.__engine)
+        self.manager.set_database_connection(self.config_session)
         self.app = FastAPI()
 
         self._register_GET(package_data)
@@ -165,6 +174,18 @@ class CodeCheckerFastAPIServer:
             processor = ServerInfoAPI_v6.Processor(
                 server_info_handler)
 
+            processor.process(iprot, oprot)
+            return otrans.getvalue()
+
+
+        @router.post("/Authentication", response_class=PlainTextResponse)
+        async def handleAuth(request: Request, response: Response, api_major: int, api_minor: int, session: Annotated[Optional[session_manager._Session], Depends(verifySession)]) -> str:
+            iprot, oprot, otrans = self.__getThriftProtocol(await request.body())
+            auth_handler = AuthHandler_v6(
+                self.manager,
+                session,
+                self.config_session)
+            processor = AuthAPI_v6.Processor(auth_handler)
             processor.process(iprot, oprot)
             return otrans.getvalue()
 
