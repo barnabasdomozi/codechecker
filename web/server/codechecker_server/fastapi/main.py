@@ -13,6 +13,8 @@ from codechecker_api.ServerInfo_v6 import \
     serverInfoService as ServerInfoAPI_v6
 from codechecker_api.Authentication_v6 import \
     codeCheckerAuthentication as AuthAPI_v6
+from codechecker_api.Configuration_v6 import \
+    configurationService as ConfigAPI_v6
 
 from codechecker_common.logger import get_logger, signal_log, LOG_CONFIG
 from .. import session_manager
@@ -20,6 +22,7 @@ from ..api.server_info_handler import \
     ThriftServerInfoHandler as ServerInfoHandler_v6
 from ..api.authentication import \
     ThriftAuthHandler as AuthHandler_v6
+from ..api.config_handler import ThriftConfigHandler as ConfigHandler_v6
 import uvicorn
 
 from ..database.config_db_model import Configuration as ORMConfiguration
@@ -189,5 +192,15 @@ class CodeCheckerFastAPIServer:
             processor.process(iprot, oprot)
             return otrans.getvalue()
 
+        @router.post("/Configuration", response_class=PlainTextResponse)
+        async def handleConfig(request: Request, response: Response, api_major: int, api_minor: int, session: Annotated[Optional[session_manager._Session], Depends(verifySession)]) -> str:
+            iprot, oprot, otrans = self.__getThriftProtocol(await request.body())
+            conf_handler = ConfigHandler_v6(
+                session,
+                self.config_session,
+                self.manager)
+            processor = ConfigAPI_v6.Processor(conf_handler)
+            processor.process(iprot, oprot)
+            return otrans.getvalue()
         self.app.include_router(router, prefix="/v{api_major}.{api_minor}")
         pass
