@@ -130,7 +130,7 @@ class CodeCheckerFastAPIServer:
             })
         cfg_sess.commit()
         cfg_sess.close()
-        
+
         ssl_key_file = os.path.join(config_directory, "key.pem")
         ssl_cert_file = os.path.join(config_directory, "cert.pem")
 
@@ -257,6 +257,20 @@ class CodeCheckerFastAPIServer:
                 self.config_session,
                 self.manager)
             processor = ConfigAPI_v6.Processor(conf_handler)
+            processor.process(iprot, oprot)
+            return otrans.getvalue()
+
+        @router.post("/Products", response_class=PlainTextResponse)
+        async def handleProducts(request: Request, response: Response, api_major: int, api_minor: int, session: Annotated[Optional[session_manager._Session], Depends(verifySession)]) -> str:
+            iprot, oprot, otrans = self.__getThriftProtocol(await request.body())
+            product = None # TODO FIX THIS
+            prod_handler = ProductHandler_v6(
+                self,
+                session,
+                self.config_session,
+                product,
+                self.version)
+            processor = ProductAPI_v6.Processor(prod_handler)
             processor.process(iprot, oprot)
             return otrans.getvalue()
         self.app.include_router(router, prefix="/v{api_major}.{api_minor}", dependencies=[Depends(checkAPICompatibility)])
