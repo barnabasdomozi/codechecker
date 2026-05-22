@@ -71,6 +71,7 @@ from .product import Product
 from .task_executors.main import executor as background_task_executor
 from .task_executors.task_manager import \
     TaskManager as BackgroundTaskManager
+from .fastapi.main import CodeCheckerFastAPIServer
 
 
 LOG = get_logger('server')
@@ -993,6 +994,7 @@ def start_server(config_directory: str, workspace_directory: str,
                  listen_address: str, force_auth: bool,
                  skip_db_cleanup: bool, context, check_env,
                  machine_id: str,
+                 use_fastapi: bool,
                  api_handler_processes: Optional[int],
                  task_worker_processes: Optional[int]) -> int:
     """
@@ -1116,6 +1118,9 @@ def start_server(config_directory: str, workspace_directory: str,
         # FIXME: Python>=3.8 automatically handles IPv6 if ':' is in the bind
         # address, see https://bugs.python.org/issue24209.
         server_clazz = CCSimpleHttpServerIPv6
+
+    if use_fastapi:
+        server_clazz = CodeCheckerFastAPIServer
 
     http_server = server_clazz((listen_address, port),
                                RequestHandler,

@@ -1059,22 +1059,6 @@ def server_init_start(args):
                          f"{socket.gethostname()}:{args.view_port}")
 
     try:
-        if args.fastapi:
-            cc_fastapi_server = fastapi_server.CodeCheckerFastAPIServer()
-            return cc_fastapi_server.start_server(args.config_directory,
-                                               args.workspace,
-                                               package_data,
-                                               args.view_port,
-                                               cfg_sql_server,
-                                               args.listen_address,
-                                               'force_auth' in args,
-                                               args.skip_db_cleanup,
-                                               context,
-                                               environ,
-                                               machine_id,
-                                               args.api_handler_processes,
-                                               args.task_worker_processes)
-
         return server.start_server(args.config_directory,
                                    args.workspace,
                                    package_data,
@@ -1086,6 +1070,7 @@ def server_init_start(args):
                                    context,
                                    environ,
                                    machine_id,
+                                   args.fastapi,
                                    args.api_handler_processes,
                                    args.task_worker_processes)
     except socket.error as err:
