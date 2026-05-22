@@ -101,6 +101,14 @@ LOG_CONFIG = '''
     "report-converter": {
       "level": "INFO",
       "handlers": ["console"]
+    },
+    "uvicorn.error": {
+      "level": "INFO",
+      "handlers": ["console"]
+    },
+    "uvicorn.access": {
+      "level": "INFO",
+      "handlers": ["console"]
     }
   },
   "handlers": {
