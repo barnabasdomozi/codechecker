@@ -22,7 +22,9 @@ import signal
 import socket
 import ssl
 import sys
+import threading
 import time
+import tracemalloc
 from typing import Dict, List, Optional, Tuple, cast
 
 from sqlalchemy.orm import sessionmaker
@@ -832,7 +834,55 @@ class CCSimpleHttpServer(HTTPServer):
             self.terminate()
 
         signal.signal(signal.SIGINT, _handler)
+
+        # Start memory profiling for this API handler process, and
+        # periodically report the top memory allocating source lines.
+        self._start_tracemalloc_reporting()
+
         return self.serve_forever()
+
+    @staticmethod
+    def _start_tracemalloc_reporting(top_count: int = 50,
+                                     interval_seconds: int = 10 * 60):
+        """
+        Starts Python's `tracemalloc` memory profiler in the current process
+        and spawns a background daemon thread that, every `interval_seconds`,
+        prints the `top_count` source lines responsible for the most memory
+        allocations. The owning process's PID is included in every report so
+        that the output of the individual API handler processes can be told
+        apart.
+        """
+        tracemalloc.start()
+
+        pid = os.getpid()
+
+        def _report():
+            snapshot = tracemalloc.take_snapshot()
+            top_stats = snapshot.statistics('lineno')
+
+            lines = [
+                f"[tracemalloc] PID {pid}: Top {top_count} memory "
+                f"allocating lines:"
+            ]
+            for index, stat in enumerate(top_stats[:top_count], 1):
+                lines.append(f"[tracemalloc] PID {pid}: #{index}: {stat}")
+
+            LOG.info("\n".join(lines))
+
+        # Emit an initial report right as the process boots up, then continue
+        # reporting on every interval.
+        _report()
+
+        def _report_loop():
+            while True:
+                time.sleep(interval_seconds)
+                _report()
+
+        thread = threading.Thread(
+            target=_report_loop,
+            name=f"tracemalloc-reporter-{pid}",
+            daemon=True)
+        thread.start()
 
     def add_product(self, orm_product, init_db=False):
         """
