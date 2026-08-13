@@ -17,6 +17,7 @@ import re
 import shlex
 import stat
 import time
+import tracemalloc
 import zlib
 
 from copy import deepcopy
@@ -89,6 +90,33 @@ GEN_OTHER_COMPONENT_NAME = "Other (auto-generated)"
 
 SQLITE_MAX_VARIABLE_NUMBER = 999
 SQLITE_MAX_COMPOUND_SELECT = 500
+
+if not tracemalloc.is_tracing():
+    tracemalloc.start()
+
+
+def log_query_cache_stats(session, endpoint: str, when: str):
+    """
+    Log the SQLAlchemy compiled-statement cache state of the Engine behind
+    `session`.
+
+    The cache is per Engine and CodeChecker creates one Engine per product in
+    every API handler process, so the PID is logged too: the same statement is
+    cached separately in each (process, product) pair. `query_cache_size` is
+    never passed to create_engine(), so the SQLAlchemy default of 500 applies,
+    with eviction only above capacity * 1.5.
+    """
+    cache = getattr(session.get_bind(), "_compiled_cache", None)
+    if cache is None:
+        LOG.info("[%s] query cache (%s): disabled", endpoint, when)
+        return
+
+    current, peak = tracemalloc.get_traced_memory()
+    LOG.info("[%s] query cache (%s): pid=%d entries=%d/%d (evicts >%d), "
+             "traced heap %.1f MiB (peak %.1f MiB)",
+             endpoint, when, os.getpid(), len(cache), cache.capacity,
+             int(cache.capacity + cache.capacity * cache.threshold),
+             current / 1024 / 1024, peak / 1024 / 1024)
 
 
 class CommentKindValue:
@@ -2186,6 +2214,8 @@ class ThriftRequestHandler:
         limit = verify_limit_range(limit)
 
         with DBSession(self._Session) as session:
+            log_query_cache_stats(session, self._product.endpoint,
+                                  "getRunResults enter")
             results = []
 
             # Extending "reports" table with report annotation columns.
@@ -2495,6 +2525,8 @@ class ThriftRequestHandler:
                                    blameInfo=blame_info,
                                    annotations=annotations))
 
+            log_query_cache_stats(session, self._product.endpoint,
+                                  "getRunResults exit")
             return results
 
     def __filter_blame_info_on_line(
